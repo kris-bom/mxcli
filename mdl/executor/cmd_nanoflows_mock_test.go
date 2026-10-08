@@ -8,6 +8,7 @@ import (
 	"github.com/mendixlabs/mxcli/mdl/ast"
 	"github.com/mendixlabs/mxcli/mdl/backend/mock"
 	"github.com/mendixlabs/mxcli/mdl/types"
+	"github.com/mendixlabs/mxcli/mdl/visitor"
 	"github.com/mendixlabs/mxcli/model"
 	"github.com/mendixlabs/mxcli/sdk/domainmodel"
 	"github.com/mendixlabs/mxcli/sdk/microflows"
@@ -112,6 +113,71 @@ func TestDescribeNanoflow_Mock_WithReturnType(t *testing.T) {
 
 	out := buf.String()
 	assertContainsStr(t, out, "nanoflow MyModule.NF_GetName")
+}
+
+// A nanoflow's allowed module roles have to come out of DESCRIBE as a grant,
+// as a microflow's do: without it a describe -> exec round trip of the
+// nanoflow loses its access rules.
+func TestDescribeNanoflow_Mock_EmitsGrantExecute(t *testing.T) {
+	mod := mkModule("Shop")
+	nf := mkNanoflow(mod.ID, "NF_Checkout")
+	nf.AllowedModuleRoles = []model.ID{"Shop.User", "Shop.Admin"}
+
+	h := mkHierarchy(mod)
+	withContainer(h, nf.ContainerID, mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListNanoflowsFunc:    func() ([]*microflows.Nanoflow, error) { return []*microflows.Nanoflow{nf}, nil },
+		ListDomainModelsFunc: func() ([]*domainmodel.DomainModel, error) { return nil, nil },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	assertNoError(t, describeNanoflow(ctx, ast.QualifiedName{Module: "Shop", Name: "NF_Checkout"}))
+
+	out := buf.String()
+	assertContainsStr(t, out, "grant execute on nanoflow Shop.NF_Checkout to Shop.User, Shop.Admin;")
+
+	// The grant reads back as the statement that restores the roles.
+	prog, errs := visitor.Build(out)
+	if len(errs) > 0 {
+		t.Fatalf("DESCRIBE emitted MDL the parser rejects: %v\n--- output ---\n%s", errs, out)
+	}
+	var grant *ast.GrantNanoflowAccessStmt
+	for _, s := range prog.Statements {
+		if g, ok := s.(*ast.GrantNanoflowAccessStmt); ok {
+			grant = g
+		}
+	}
+	if grant == nil {
+		t.Fatalf("no grant execute on nanoflow statement in:\n%s", out)
+	}
+	if grant.Nanoflow.String() != "Shop.NF_Checkout" || len(grant.Roles) != 2 ||
+		grant.Roles[0].String() != "Shop.User" || grant.Roles[1].String() != "Shop.Admin" {
+		t.Errorf("round-tripped grant = %s to %v, want Shop.NF_Checkout to [Shop.User Shop.Admin]",
+			grant.Nanoflow.String(), grant.Roles)
+	}
+}
+
+func TestDescribeNanoflow_Mock_NoRolesNoGrant(t *testing.T) {
+	mod := mkModule("Shop")
+	nf := mkNanoflow(mod.ID, "NF_Checkout")
+
+	h := mkHierarchy(mod)
+	withContainer(h, nf.ContainerID, mod.ID)
+
+	mb := &mock.MockBackend{
+		IsConnectedFunc:      func() bool { return true },
+		ListNanoflowsFunc:    func() ([]*microflows.Nanoflow, error) { return []*microflows.Nanoflow{nf}, nil },
+		ListDomainModelsFunc: func() ([]*domainmodel.DomainModel, error) { return nil, nil },
+		ListModulesFunc:      func() ([]*model.Module, error) { return []*model.Module{mod}, nil },
+	}
+
+	ctx, buf := newMockCtx(t, withBackend(mb), withHierarchy(h))
+	assertNoError(t, describeNanoflow(ctx, ast.QualifiedName{Module: "Shop", Name: "NF_Checkout"}))
+
+	assertNotContainsStr(t, buf.String(), "grant execute")
 }
 
 func TestDescribeNanoflow_ReturningFlowSkipsEmptyEndEvent(t *testing.T) {
