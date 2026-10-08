@@ -4,6 +4,7 @@ package main
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -37,6 +38,51 @@ func TestChooseDescribeType(t *testing.T) {
 				t.Errorf("candidates = %v, want %v", gotCands, tc.wantCands)
 			}
 		})
+	}
+}
+
+// TestDescribeTypeToMDL_PublishedRestService pins the CLI spellings of the
+// published REST service type. The MDL statement `describe published rest
+// service M.S` worked in exec and the REPL, but the `mxcli describe` subcommand
+// rejected the type with "Unknown type".
+func TestDescribeTypeToMDL_PublishedRestService(t *testing.T) {
+	const want = "DESCRIBE PUBLISHED REST SERVICE Shop.OrderApi"
+	for _, typ := range []string{
+		"PUBLISHED REST SERVICE",
+		"PUBLISHEDRESTSERVICE",
+		"REST SERVICE",
+		"RESTSERVICE",
+	} {
+		t.Run(typ, func(t *testing.T) {
+			got, ok := describeTypeToMDL(typ, "Shop.OrderApi")
+			if !ok {
+				t.Fatalf("describeTypeToMDL(%q) reported an unknown type", typ)
+			}
+			if got != want {
+				t.Errorf("describeTypeToMDL(%q) = %q, want %q", typ, got, want)
+			}
+		})
+	}
+}
+
+// TestTypeMaps_ValuesAreDispatchable checks that every keyword auto-detect can
+// produce is a type the describe dispatch accepts; otherwise auto-detect would
+// resolve a name and then fail with "Unknown type".
+func TestTypeMaps_ValuesAreDispatchable(t *testing.T) {
+	for _, m := range []map[string]string{objectTypeToDescribe, unitTypeToDescribe} {
+		for k, v := range m {
+			if _, ok := describeTypeToMDL(strings.ToUpper(v), "Mod.X"); !ok {
+				t.Errorf("auto-detect maps %q to %q, which describe does not accept", k, v)
+			}
+		}
+	}
+	// A published REST service must be auto-detectable from both the catalog
+	// and the live project scan.
+	if objectTypeToDescribe["PUBLISHED_REST_SERVICE"] == "" {
+		t.Error(`objectTypeToDescribe has no entry for "PUBLISHED_REST_SERVICE"`)
+	}
+	if unitTypeToDescribe["Rest$PublishedRestService"] == "" {
+		t.Error(`unitTypeToDescribe has no entry for "Rest$PublishedRestService"`)
 	}
 }
 

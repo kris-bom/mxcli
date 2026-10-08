@@ -51,6 +51,7 @@ Types:
   restclient       Describe a consumed REST service (also: "rest client")
   odataclient      Describe a consumed OData service
   odataservice     Describe a published OData service
+  publishedrestservice  Describe a published REST service (also: "published rest service", "rest service")
   imagecollection  Describe an image collection (also: "image collection")
   menu             Describe a standalone menu document
   queue            Describe a task queue
@@ -84,6 +85,7 @@ Example:
   mxcli describe -p app.mpr import mapping MyModule.IMM_Customer
   mxcli describe -p app.mpr export mapping MyModule.EMM_Customer
   mxcli describe -p app.mpr rest client MyModule.PetStoreAPI
+  mxcli describe -p app.mpr published rest service MyModule.OrderApi
   mxcli describe -p app.mpr settings Settings
   mxcli describe -p app.mpr navigation Responsive
   mxcli describe -p app.mpr --format elk systemoverview SystemOverview
@@ -127,8 +129,8 @@ Example:
 		mdlCmd, ok := describeTypeToMDL(objectType, name)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "Unknown type: %s\n", strings.Join(args[:len(args)-1], " "))
-			fmt.Fprintln(os.Stderr, "Valid types: module, entity, association, enumeration, constant, microflow, nanoflow, workflow, page, snippet, layout, javaaction, jsonstructure, importmapping, exportmapping, restclient, odataclient, odataservice, imagecollection, menu, queue, scheduledevent, businesseventservice, databaseconnection, agent, aimodel, knowledgebase, consumedmcpservice, datatransformer, modulerole, userrole, projectsecurity, settings, demouser, navigation, systemoverview")
-			fmt.Fprintln(os.Stderr, "Multi-word types also accepted: json structure, import mapping, export mapping, rest client, image collection, scheduled event, regular expression, business event service, agent, model, knowledge base, consumed mcp service, data transformer, etc.")
+			fmt.Fprintln(os.Stderr, "Valid types: module, entity, association, enumeration, constant, microflow, nanoflow, workflow, page, snippet, layout, javaaction, jsonstructure, importmapping, exportmapping, restclient, odataclient, odataservice, publishedrestservice, imagecollection, menu, queue, scheduledevent, businesseventservice, databaseconnection, agent, aimodel, knowledgebase, consumedmcpservice, datatransformer, modulerole, userrole, projectsecurity, settings, demouser, navigation, systemoverview")
+			fmt.Fprintln(os.Stderr, "Multi-word types also accepted: json structure, import mapping, export mapping, rest client, published rest service, image collection, scheduled event, regular expression, business event service, agent, model, knowledge base, consumed mcp service, data transformer, etc.")
 			os.Exit(1)
 		}
 
@@ -276,6 +278,8 @@ func describeTypeToMDL(objectType, name string) (string, bool) {
 		return fmt.Sprintf("DESCRIBE CONSUMED ODATA SERVICE %s", name), true
 	case "ODATASERVICE", "ODATA SERVICE":
 		return fmt.Sprintf("DESCRIBE PUBLISHED ODATA SERVICE %s", name), true
+	case "PUBLISHEDRESTSERVICE", "PUBLISHED REST SERVICE", "RESTSERVICE", "REST SERVICE":
+		return fmt.Sprintf("DESCRIBE PUBLISHED REST SERVICE %s", name), true
 	case "IMAGECOLLECTION", "IMAGE COLLECTION":
 		return fmt.Sprintf("DESCRIBE IMAGE COLLECTION %s", name), true
 	case "MENU":
@@ -334,6 +338,7 @@ var objectTypeToDescribe = map[string]string{
 	"ODATA_CLIENT":           "odataclient",
 	"ODATA_SERVICE":          "odataservice",
 	"REST_CLIENT":            "restclient",
+	"PUBLISHED_REST_SERVICE": "publishedrestservice",
 	"BUSINESS_EVENT_SERVICE": "businesseventservice",
 	"DATABASE_CONNECTION":    "databaseconnection",
 	"IMAGE_COLLECTION":       "imagecollection",
@@ -371,6 +376,7 @@ var unitTypeToDescribe = map[string]string{
 	"Queues$Queue":                         "queue",
 	"ScheduledEvents$ScheduledEvent":       "scheduledevent",
 	"RegularExpressions$RegularExpression": "regularexpression",
+	"Rest$PublishedRestService":            "publishedrestservice",
 }
 
 // resolveDescribeType auto-detects the `describe` type for a qualified document
