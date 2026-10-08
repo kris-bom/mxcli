@@ -127,6 +127,10 @@ func TestDescribers_HaveNoHandRolledStringLiterals(t *testing.T) {
 		"cmd_published_rest.go",
 		"cmd_rest_clients.go",
 		"cmd_agenteditor_agents.go",
+		// DESCRIBE NAVIGATION and DESCRIBE MENU: menu captions such as
+		// "Customer's orders" were written between hand-placed quotes.
+		"cmd_navigation.go",
+		"cmd_menus.go",
 	} {
 		src, err := os.ReadFile(f)
 		if err != nil {
