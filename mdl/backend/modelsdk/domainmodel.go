@@ -676,8 +676,9 @@ func crossAssocFromGen(ca *genDm.CrossAssociation) *domainmodel.CrossModuleAssoc
 	return out
 }
 
-// deleteErrorMessageFromGen reads the en_US text out of a delete behaviour's
-// error message, or "" when there is none. The message is a Texts$Text like any
+// deleteErrorMessageFromGen reads the text out of a delete behaviour's error
+// message, or "" when there is none: the project's language first (the one
+// deleteErrorText writes), then en_US, then any. The message is a Texts$Text like any
 // caption; MDL carries one string, and CarryTranslations puts the other
 // languages back on a rewrite.
 func deleteErrorMessageFromGen(el element.Element) string {
@@ -689,8 +690,10 @@ func deleteErrorMessageFromGen(el element.Element) string {
 	if t == nil {
 		return ""
 	}
-	if v, ok := t.Translations["en_US"]; ok {
-		return v
+	for _, lang := range []string{model.AuthoringLanguage(), model.DefaultTextLanguage} {
+		if v, ok := t.Translations[lang]; ok {
+			return v
+		}
 	}
 	for _, v := range t.Translations {
 		return v

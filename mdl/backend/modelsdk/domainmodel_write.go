@@ -929,7 +929,11 @@ func assignID(elem element.Element) {
 
 // deleteErrorText is the message element a restrict behaviour must carry.
 //
-// An omitted message becomes an empty en_US translation rather than a null: null
+// The message is stored under the project's language (model.AuthoringLanguage),
+// like every other text mxcli writes (#970): a hardcoded en_US left a project
+// whose default language is e.g. nl_NL without a message in the app's language.
+//
+// An omitted message becomes an empty translation rather than a null: null
 // is the shape that stops the runtime starting, and Studio Pro's dialog lets the
 // box be left empty, so an empty text is the closest thing to "no message" that
 // still boots.
@@ -943,7 +947,7 @@ func deleteErrorText(db *domainmodel.DeleteBehavior) *model.Text {
 	if db != nil {
 		msg = db.ErrorMessage
 	}
-	return &model.Text{Translations: map[string]string{"en_US": msg}}
+	return &model.Text{Translations: map[string]string{model.AuthoringLanguage(): msg}}
 }
 
 // copyAssignedIDs writes the identities minted on a gen entity back onto the

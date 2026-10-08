@@ -19,6 +19,10 @@ func execCreateAssociation(ctx *ExecContext, s *ast.CreateAssociationStmt) error
 	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
+	// A restrict side's message is a Texts$Text the backend builds (and reads
+	// back) in model.AuthoringLanguage(): publish the project's language before
+	// the first domain-model call.
+	authoringLanguage(ctx)
 
 	// A FROM entity in another module writes a project that cannot be LOADED, so
 	// this must fail before the write — `check` reporting it is not enough for a
@@ -264,6 +268,10 @@ func execAlterAssociation(ctx *ExecContext, s *ast.AlterAssociationStmt) error {
 	if !ctx.Connected() {
 		return mdlerrors.NewNotConnected()
 	}
+	// SET DELETE_BEHAVIOR PREVENT writes a Texts$Text the backend builds (and
+	// reads back) in model.AuthoringLanguage(): publish the project's language
+	// before the first domain-model call.
+	authoringLanguage(ctx)
 
 	module, err := findModule(ctx, s.Name.Module)
 	if err != nil {
@@ -698,6 +706,9 @@ func listAssociation(ctx *ExecContext, name *ast.QualifiedName) error {
 
 // describeAssociation handles DESCRIBE ASSOCIATION command.
 func describeAssociation(ctx *ExecContext, name ast.QualifiedName) error {
+	// The restrict message is read in model.AuthoringLanguage() — the language
+	// CREATE writes it in — so publish the project's language before loading.
+	authoringLanguage(ctx)
 	module, err := findModule(ctx, name.Module)
 	if err != nil {
 		return err
